@@ -3,32 +3,44 @@ import numpy as np
 from PIL import Image
 import base64
 from io import BytesIO
-import tflite_runtime.interpreter as tflite
+import tensorflow as tf
 
 app = Flask(__name__)
 
-# Load model
-interpreter = tflite.Interpreter(model_path="food101_model.tflite")
-interpreter.allocate_tensors()
+# =============================
+# LOAD MODEL (RENDER SAFE)
+# =============================
+model = tf.lite.Interpreter(model_path="food101_model.tflite")
+model.allocate_tensors()
 
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+input_details = model.get_input_details()
+output_details = model.get_output_details()
 
-# Load labels
+# =============================
+# LOAD LABELS
+# =============================
 with open("labels.txt", "r") as f:
     labels = [line.strip() for line in f.readlines()]
 
-# Preprocess image
+# =============================
+# PREPROCESS IMAGE
+# =============================
 def preprocess(image):
     image = image.resize((224, 224))
     image = np.array(image).astype(np.float32) / 255.0
     image = np.expand_dims(image, axis=0)
     return image
 
+# =============================
+# HOME ROUTE
+# =============================
 @app.route("/")
 def home():
-    return "API is running"
+    return "API is running on Render 🚀"
 
+# =============================
+# PREDICTION ROUTE
+# =============================
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
@@ -39,6 +51,7 @@ def predict():
 
         img_str = data["image"]
 
+        # remove base64 header if exists
         if "," in img_str:
             img_str = img_str.split(",")[1]
 
@@ -47,10 +60,11 @@ def predict():
 
         input_data = preprocess(image)
 
-        interpreter.set_tensor(input_details[0]["index"], input_data)
-        interpreter.invoke()
+        # run inference
+        model.set_tensor(input_details[0]["index"], input_data)
+        model.invoke()
 
-        output = interpreter.get_tensor(output_details[0]["index"])
+        output = model.get_tensor(output_details[0]["index"])
 
         index = int(np.argmax(output))
         label = labels[index]
@@ -68,5 +82,10 @@ def predict():
         }), 500
 
 
+# =============================
+# RENDER ENTRY POINT
+# =============================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

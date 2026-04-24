@@ -1,5 +1,5 @@
 flask
-numpy==1.26.4
+numpy<2
 pillow
 gunicorn
-tensorflow==2.15.0
+tflite-runtime

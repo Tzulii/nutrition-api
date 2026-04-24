@@ -44,7 +44,7 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        data = request.get_json()
+        data = request.get_json(force=True)
 
         if not data or "image" not in data:
             return jsonify({"error": "No image provided"}), 400
